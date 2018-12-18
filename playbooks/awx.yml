@@ -1,0 +1,83 @@
+---
+- hosts: all
+  become: true
+
+  vars:
+    inventory_file: ../Files/inventory
+    sources_list_file: ../Files/sources.list
+    ansible_port: 22
+    ansible_ssh_pass: #Insert SSH user password 
+    become_pass: #insert root password
+    become_user: # user to becomee for root (usually root)
+    ansible_user: #name of ssh user
+
+  tasks:
+
+  - name: Update and Upgrade the system
+    become: true
+    apt:
+      upgrade: yes
+      update_cache: yes
+
+  - name: Copy over the sources.lists file, and replace the existing on the system
+    copy:
+      src: "{{ sources_list_file }}"
+      dest: "/etc/apt/"
+  
+  - name: Update the cache again
+    apt:
+      update_cache: yes
+
+  - name: Add ansible repository to ppa
+    command: apt-add-repository --yes --update ppa:ansible/ansible
+    become: true
+
+  - name: install ansible
+    apt:
+      name: ansible
+    become: true
+
+  - name: Install docker.io
+    apt:
+      name: docker.io
+    become: true
+
+  - name: install python-pip
+    command: apt install python-pip -y
+    become: true
+
+  - name: install docker
+    command: pip install docker
+    become: true
+
+  - name: Install nodejs and npm
+    command: apt install nodejs npm -y
+    become: true
+
+  - name: install npm with npm
+    command: npm install npm --global
+    become: true
+  
+  - name: Checkout AWX to Documents
+    git:
+      repo: https://github.com/ansible/awx.git
+      dest: /home/{{ ansible_user }}/Documents/awx/
+    become: true
+    
+
+  - name: Copy over new inventory file to /home/root/Documents/awx/installer/inventory
+    copy:
+      src: "{{ inventory_file }}"
+      dest: "/home/{{ ansible_user }}/Documents/awx/installer/"
+    become: true
+    
+
+  - name: Run the AWX playbook
+    command: ansible-playbook -i /home/{{ ansible_user }}/Documents/awx/installer/inventory /home/{{ ansible_user }}/Documents/awx/installer/install.yml
+    become: true
+
+  - name: Make sure a service is running
+    systemd:
+      state: started
+      name: docker
+    become: true
